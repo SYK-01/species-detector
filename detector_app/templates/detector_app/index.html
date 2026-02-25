@@ -1,0 +1,748 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Species Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{--green:#4ade80;--white:#f0fdf4;--dim:rgba(240,253,244,0.45);--panel:rgba(5,20,10,0.80);--border:rgba(74,222,128,0.18);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{min-height:100vh;font-family:'Lora',serif;color:var(--white);background:#040c06;overflow-x:hidden;}
+
+  .bg{position:fixed;inset:0;z-index:0;background:
+    radial-gradient(ellipse 140% 90% at 50% 110%,rgba(0,50,15,0.98),transparent),
+    radial-gradient(ellipse 70% 50% at 15% 60%,rgba(0,70,20,0.35),transparent),
+    radial-gradient(ellipse 70% 50% at 85% 40%,rgba(0,45,18,0.35),transparent),
+    linear-gradient(180deg,#020905 0%,#051508 50%,#092010 100%);}
+
+  .particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+  .particle{position:absolute;border-radius:50%;background:rgba(74,222,128,0.3);animation:floatUp linear infinite;}
+  @keyframes floatUp{0%{transform:translateY(100vh) translateX(0);opacity:0;}8%{opacity:0.8;}88%{opacity:0.4;}100%{transform:translateY(-20px) translateX(var(--dx));opacity:0;}}
+
+  /* ── HAMBURGER MENU ── */
+  .hamburger{position:fixed;top:0;left:0;z-index:100;display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;}
+  .ham-icon{display:flex;flex-direction:column;gap:5px;padding:4px;}
+  .ham-line{width:22px;height:2px;background:var(--green);border-radius:2px;transition:all 0.3s ease;}
+  .hamburger.open .ham-line:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .hamburger.open .ham-line:nth-child(2){opacity:0;transform:scaleX(0);}
+  .hamburger.open .ham-line:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  .ham-name{font-family:'Cinzel',serif;font-size:15px;font-weight:600;color:var(--green);letter-spacing:2px;text-shadow:0 0 20px rgba(74,222,128,0.4);}
+
+  /* ── DRAWER ── */
+  .drawer-overlay{position:fixed;inset:0;z-index:98;background:rgba(0,0,0,0);pointer-events:none;transition:background 0.3s;}
+  .drawer-overlay.open{background:rgba(0,0,0,0.6);pointer-events:all;}
+
+  .drawer{position:fixed;top:0;left:-280px;width:260px;height:100vh;z-index:99;
+    background:rgba(4,14,7,0.97);
+    border-right:1px solid rgba(74,222,128,0.15);
+    backdrop-filter:blur(20px);
+    transition:left 0.35s cubic-bezier(0.4,0,0.2,1);
+    display:flex;flex-direction:column;padding-top:70px;overflow:hidden;}
+  .drawer.open{left:0;}
+
+  /* Glow line top */
+  .drawer::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--green),transparent);}
+
+  .drawer-logo{padding:0 24px 24px;border-bottom:1px solid rgba(74,222,128,0.1);}
+  .drawer-logo span{font-size:28px;display:block;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(74,222,128,0.5));}
+  .drawer-logo h2{font-family:'Cinzel',serif;font-size:13px;color:var(--green);letter-spacing:3px;}
+  .drawer-logo p{font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:2px;text-transform:uppercase;}
+
+  .drawer-nav{flex:1;padding:16px 0;}
+  .nav-item{display:flex;align-items:center;gap:14px;padding:13px 24px;cursor:pointer;transition:all 0.2s;border-left:2px solid transparent;font-size:14px;color:var(--dim);letter-spacing:0.5px;}
+  .nav-item:hover,.nav-item.active{background:rgba(74,222,128,0.07);color:var(--green);border-left-color:var(--green);}
+  .nav-item .ni{font-size:18px;width:24px;text-align:center;}
+
+  .drawer-sep{height:1px;background:rgba(74,222,128,0.08);margin:8px 24px;}
+
+  .drawer-lang{padding:16px 24px;border-top:1px solid rgba(74,222,128,0.1);}
+  .drawer-lang p{font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:10px;text-transform:uppercase;}
+  .drawer-lang-btns{display:flex;gap:8px;}
+  .dlang-btn{flex:1;padding:7px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.18);border-radius:8px;color:var(--dim);font-family:'Lora',serif;font-size:12px;cursor:pointer;transition:all 0.2s;text-align:center;}
+  .dlang-btn.active,.dlang-btn:hover{background:rgba(74,222,128,0.14);color:var(--green);border-color:var(--green);}
+
+  /* ── TOPBAR LANG (esquina derecha) ── */
+  .top-bar{position:fixed;top:0;right:0;z-index:97;display:flex;gap:8px;padding:14px 18px;}
+  .lang-btn{background:rgba(4,14,7,0.85);border:1px solid rgba(74,222,128,0.18);color:var(--dim);font-family:'Lora',serif;font-size:11px;padding:5px 14px;border-radius:20px;cursor:pointer;transition:all 0.2s;letter-spacing:1px;backdrop-filter:blur(8px);}
+  .lang-btn.active,.lang-btn:hover{background:rgba(74,222,128,0.15);color:var(--green);border-color:var(--green);}
+
+  /* ── MAIN CONTENT ── */
+  .wrap{position:relative;z-index:2;max-width:960px;margin:0 auto;padding:60px 20px 80px;}
+
+  header{text-align:center;padding:28px 0 28px;animation:fadeDown 0.7s ease both;}
+  .logo-icon{font-size:44px;display:block;margin-bottom:10px;filter:drop-shadow(0 0 20px rgba(74,222,128,0.5));}
+  h1{font-family:'Cinzel',serif;font-size:clamp(28px,6vw,54px);font-weight:700;letter-spacing:3px;color:#fff;text-shadow:0 0 60px rgba(74,222,128,0.4),0 2px 4px rgba(0,0,0,0.8);}
+  h1 em{color:var(--green);font-style:normal;}
+  .tagline{font-size:11px;letter-spacing:5px;color:var(--dim);margin-top:10px;text-transform:uppercase;}
+
+  .search-section{animation:fadeUp 0.6s 0.1s ease both;margin-bottom:24px;}
+  .search-box{position:relative;margin-bottom:14px;}
+  .search-input{width:100%;background:rgba(4,18,8,0.85);border:1px solid var(--border);border-radius:14px;padding:18px 68px 18px 24px;color:#fff;font-family:'Lora',serif;font-size:17px;outline:none;transition:border-color 0.3s,box-shadow 0.3s;backdrop-filter:blur(12px);}
+  .search-input:focus{border-color:var(--green);box-shadow:0 0 32px rgba(74,222,128,0.14);}
+  .search-input::placeholder{color:rgba(240,253,244,0.28);}
+  .search-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:linear-gradient(135deg,#15803d,#4ade80);border:none;border-radius:10px;width:46px;height:46px;font-size:20px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;display:flex;align-items:center;justify-content:center;}
+  .search-btn:hover{transform:translateY(-50%) scale(1.08);box-shadow:0 4px 24px rgba(74,222,128,0.45);}
+  .quick-tags{display:flex;gap:8px;flex-wrap:wrap;}
+  .tag{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);color:var(--dim);font-family:'Lora',serif;font-size:12px;padding:5px 14px;border-radius:20px;cursor:pointer;transition:all 0.2s;}
+  .tag:hover{background:rgba(74,222,128,0.14);color:var(--green);border-color:var(--green);}
+
+  #loading{display:none;text-align:center;padding:52px 20px;}
+  .loader-ring{width:56px;height:56px;border:2px solid rgba(74,222,128,0.12);border-top-color:var(--green);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loader-text{font-size:12px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;}
+  #errorMsg{display:none;text-align:center;padding:20px 24px;color:#fca5a5;font-size:14px;background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.18);border-radius:12px;margin-bottom:20px;line-height:1.7;}
+
+  #resultCard{display:none;margin-bottom:24px;animation:fadeUp 0.5s ease both;}
+  .powered{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-bottom:10px;font-size:11px;color:var(--dim);}
+  .powered-chip{background:rgba(74,222,128,0.06);border:1px solid var(--border);border-radius:10px;padding:4px 10px;font-size:10px;display:flex;align-items:center;gap:4px;}
+
+  .result-hero{background:var(--panel);border:1px solid var(--border);border-radius:22px;overflow:hidden;backdrop-filter:blur(14px);margin-bottom:14px;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+  .result-img-wrap{position:relative;height:300px;overflow:hidden;background:#061209;}
+  .result-img{width:100%;height:100%;object-fit:cover;filter:brightness(0.72) saturate(1.15);transition:transform 7s ease;display:block;}
+  .result-hero:hover .result-img{transform:scale(1.05);}
+  .result-img-overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,12,6,0.95) 0%,rgba(4,12,6,0.15) 55%,transparent 100%);}
+  .result-img-name{position:absolute;bottom:24px;left:28px;right:28px;}
+  .species-common{font-family:'Cinzel',serif;font-size:clamp(22px,4.5vw,40px);font-weight:700;color:#fff;text-shadow:0 2px 24px rgba(0,0,0,0.9);line-height:1.1;}
+  .species-sci{font-style:italic;font-size:15px;color:var(--green);margin-top:6px;opacity:0.9;}
+  .cat-badge{position:absolute;top:18px;right:18px;background:rgba(4,12,6,0.82);border:1px solid rgba(74,222,128,0.4);border-radius:20px;padding:5px 16px;font-size:12px;color:var(--green);letter-spacing:1px;backdrop-filter:blur(8px);}
+  .wiki-badge{position:absolute;top:18px;left:18px;background:rgba(4,12,6,0.82);border:1px solid rgba(74,222,128,0.25);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--dim);backdrop-filter:blur(8px);text-decoration:none;display:flex;align-items:center;gap:5px;transition:all 0.2s;}
+  .wiki-badge:hover{border-color:var(--green);color:var(--green);}
+
+  .info-grid{display:grid;grid-template-columns:repeat(5,1fr);background:rgba(74,222,128,0.06);border-top:1px solid var(--border);}
+  .info-cell{background:rgba(4,12,6,0.9);padding:14px 10px;text-align:center;border-right:1px solid var(--border);}
+  .info-cell:last-child{border-right:none;}
+  .ic-icon{font-size:20px;margin-bottom:5px;}
+  .ic-label{font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:4px;}
+  .ic-value{font-size:12px;font-weight:500;color:#e8f5e8;line-height:1.3;}
+
+  .info-card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px 26px;backdrop-filter:blur(12px);margin-bottom:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);}
+  .card-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--green);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+  .card-title::after{content:'';flex:1;height:1px;background:rgba(74,222,128,0.15);}
+  .card-text{font-size:15px;line-height:1.9;color:rgba(240,253,244,0.82);}
+  .zone-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .zone-chip{background:rgba(74,222,128,0.07);border:1px solid rgba(74,222,128,0.18);border-radius:20px;padding:6px 14px;font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px;}
+
+  /* YOLO */
+  .detect-panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;backdrop-filter:blur(12px);margin-bottom:28px;overflow:hidden;}
+  .detect-header{padding:10px 16px;border-bottom:1px solid var(--border);font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  .dot-live{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s ease-in-out infinite;flex-shrink:0;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.7)}}
+  .detect-body{display:flex;padding:10px 14px;gap:10px;flex-wrap:wrap;}
+  .method-tab-sm{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;background:rgba(74,222,128,0.04);}
+  .method-tab-sm:hover,.method-tab-sm.active{background:rgba(74,222,128,0.1);border-color:var(--green);}
+  .method-tab-sm .ti{font-size:18px;}
+  .method-tab-sm .tt{font-size:13px;font-weight:600;color:#fff;}
+  .method-tab-sm .ts{font-size:11px;color:var(--dim);}
+  .detect-content{padding:0 14px 14px;}
+  .upload-area-sm{border:1.5px dashed rgba(74,222,128,0.2);border-radius:10px;padding:14px 20px;text-align:center;cursor:pointer;transition:all 0.25s;display:none;}
+  .upload-area-sm.active{display:block;}
+  .upload-area-sm:hover,.upload-area-sm.drag{border-color:var(--green);background:rgba(74,222,128,0.03);}
+  .upload-area-sm input{display:none;}
+  .upload-area-sm .ut{color:var(--dim);font-size:13px;}
+  #imagePreview{display:none;border-radius:8px;overflow:hidden;margin-bottom:10px;}
+  #imagePreview img{width:100%;height:140px;object-fit:cover;display:block;}
+  .camera-area{border-radius:10px;overflow:hidden;display:none;margin-bottom:10px;}
+  .camera-area.active{display:block;}
+  #cameraFeed{width:100%;height:140px;object-fit:cover;background:#020d05;display:block;}
+  .cam-overlay{display:flex;align-items:center;justify-content:center;padding:20px;font-size:12px;color:var(--dim);}
+  .yolo-btn{display:block;width:100%;padding:11px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:9px;color:var(--green);font-family:'Lora',serif;font-weight:600;font-size:13px;cursor:pointer;transition:all 0.2s;letter-spacing:1px;}
+  .yolo-btn:hover{background:rgba(74,222,128,0.16);}
+  .yolo-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* CATEGORIES 3D - REAL PHOTOS */
+  .section-title{font-family:'Cinzel',serif;font-size:17px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:12px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;perspective:1200px;}
+  .cat-card{
+    border-radius:18px;overflow:hidden;cursor:pointer;
+    border:1px solid rgba(74,222,128,0.2);
+    position:relative;height:160px;
+    transform-style:preserve-3d;
+    transition:transform 0.4s cubic-bezier(0.23,1,0.32,1),box-shadow 0.4s,border-color 0.3s;
+    box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    background:#061209;
+  }
+  .cat-card:hover{
+    transform:translateY(-14px) rotateX(8deg) scale(1.04);
+    border-color:rgba(74,222,128,0.7);
+    box-shadow:0 28px 55px rgba(0,0,0,0.65),0 0 35px rgba(74,222,128,0.2);
+  }
+  .cat-card::before{
+    content:'';position:absolute;inset:0;z-index:2;border-radius:18px;
+    background:linear-gradient(135deg,rgba(255,255,255,0.1) 0%,transparent 55%);
+    opacity:0;transition:opacity 0.3s;pointer-events:none;
+  }
+  .cat-card:hover::before{opacity:1;}
+  .cat-card::after{
+    content:'';position:absolute;top:12px;right:12px;width:7px;height:7px;
+    border-radius:50%;background:var(--green);z-index:5;
+    opacity:0;transform:scale(0);transition:all 0.3s;
+    box-shadow:0 0 10px var(--green);
+  }
+  .cat-card:hover::after{opacity:1;transform:scale(1);}
+  .cat-card img.cat-photo{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;object-position:center;
+    filter:brightness(0.7) saturate(1.1);
+    transition:filter 0.4s,transform 0.6s ease;
+    display:block;z-index:0;
+  }
+  .cat-card:hover img.cat-photo{
+    filter:brightness(0.9) saturate(1.3);
+    transform:scale(1.08);
+  }
+  .card-overlay{
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(0deg,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.05) 55%,transparent 100%);
+    transition:background 0.3s;
+  }
+  .cat-card:hover .card-overlay{background:linear-gradient(0deg,rgba(0,0,0,0.65) 0%,transparent 60%);}
+  .cat-name{
+    position:absolute;bottom:0;left:0;right:0;z-index:3;
+    padding:10px 8px 13px;
+    font-size:11px;font-weight:700;color:#fff;
+    text-align:center;letter-spacing:1px;text-transform:uppercase;
+    text-shadow:0 1px 8px rgba(0,0,0,1);
+    transition:color 0.3s;
+  }
+  .cat-card:hover .cat-name{color:var(--green);}
+
+  /* FOOTER */
+  #siteFooter{border-top:1px solid rgba(74,222,128,0.1);margin-top:48px;padding:28px 0 24px;text-align:center;}
+  .footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-bottom:14px;}
+  .footer-links a{font-size:12px;color:rgba(240,253,244,0.35);text-decoration:none;transition:color 0.2s;letter-spacing:0.3px;}
+  .footer-links a:hover{color:var(--green);}
+  .footer-copy{font-size:12px;color:rgba(240,253,244,0.25);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .footer-dot{color:rgba(74,222,128,0.3);}
+
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  @media(max-width:600px){
+    .info-grid{grid-template-columns:repeat(3,1fr);}
+    .cat-grid{grid-template-columns:repeat(3,1fr);}
+    .result-img-wrap{height:220px;}
+    .detect-body{flex-direction:column;align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="particles" id="particles"></div>
+
+<!-- HAMBURGER -->
+<div class="hamburger" id="hamburger" onclick="toggleDrawer()">
+  <div class="ham-icon">
+    <div class="ham-line"></div>
+    <div class="ham-line"></div>
+    <div class="ham-line"></div>
+  </div>
+  <span class="ham-name">Yura</span>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <span>🌿</span>
+    <h2>Species Detector</h2>
+    <p>Biodiversity · AI Explorer</p>
+  </div>
+
+  <nav class="drawer-nav">
+    <div class="nav-item active" id="navHome" onclick="goHome()">
+      <span class="ni">🏠</span> <span id="navHomeLabel">Home</span>
+    </div>
+    <div class="nav-item" onclick="scrollToSearch()">
+      <span class="ni">🔍</span> <span id="navSearchLabel">Search Species</span>
+    </div>
+    <div class="drawer-sep"></div>
+    <div class="nav-item" onclick="scrollToCategories()">
+      <span class="ni">🌿</span> <span id="navCatLabel">Categories</span>
+    </div>
+    <div class="nav-item" onclick="scrollToYolo()">
+      <span class="ni">🔬</span> <span id="navYoloLabel">Detect with YOLO</span>
+    </div>
+    <div class="drawer-sep"></div>
+    <div class="nav-item" onclick="quickSearch('Orchid')">
+      <span class="ni">🌸</span> Orchid
+    </div>
+    <div class="nav-item" onclick="quickSearch('Cactus')">
+      <span class="ni">🌵</span> Cactus
+    </div>
+    <div class="nav-item" onclick="quickSearch('Venus flytrap')">
+      <span class="ni">🪴</span> Carnivorous
+    </div>
+    <div class="nav-item" onclick="quickSearch('Bamboo')">
+      <span class="ni">🎋</span> Bamboo
+    </div>
+  </nav>
+
+  <div class="drawer-lang">
+    <p id="drawerLangLabel">Language</p>
+    <div class="drawer-lang-btns">
+      <button class="dlang-btn active" id="dlangEN" onclick="setLang('en')">🇺🇸 EN</button>
+      <button class="dlang-btn" id="dlangES" onclick="setLang('es')">🇵🇪 ES</button>
+    </div>
+  </div>
+</div>
+
+<!-- LANG TOP RIGHT -->
+<div class="top-bar">
+  <button class="lang-btn active" id="btnEN" onclick="setLang('en')">🇺🇸 EN</button>
+  <button class="lang-btn" id="btnES" onclick="setLang('es')">🇵🇪 ES</button>
+</div>
+
+<!-- MAIN -->
+<div class="wrap">
+  <header>
+    <span class="logo-icon">🌿</span>
+    <h1>Species <em>Detector</em></h1>
+    <p class="tagline" id="tagline">Biodiversity Explorer · Gemini AI + Wikipedia</p>
+  </header>
+
+  <div class="search-section" id="searchSection">
+    <div class="search-box">
+      <input type="text" class="search-input" id="searchInput"
+        placeholder="Search any species... e.g: orchid, lily, oak tree" autocomplete="off">
+      <button class="search-btn" onclick="searchSpecies()">🔍</button>
+    </div>
+    <div class="quick-tags" id="quickTags">
+      <span class="tag" onclick="quickSearch('Orchid')">🌸 Orchid</span>
+      <span class="tag" onclick="quickSearch('Cactus')">🌵 Cactus</span>
+      <span class="tag" onclick="quickSearch('Fern')">🌿 Fern</span>
+      <span class="tag" onclick="quickSearch('Venus flytrap')">🪴 Carnivorous</span>
+      <span class="tag" onclick="quickSearch('Bamboo')">🎋 Bamboo</span>
+      <span class="tag" onclick="quickSearch('Sunflower')">🌻 Sunflower</span>
+      <span class="tag" onclick="quickSearch('Lavender')">💜 Lavender</span>
+      <span class="tag" onclick="quickSearch('Bonsai')">🎍 Bonsai</span>
+    </div>
+  </div>
+
+  <div id="errorMsg"></div>
+
+  <div id="loading">
+    <div class="loader-ring"></div>
+    <div class="loader-text" id="loadingText">Searching Wikipedia + Gemini AI...</div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultCard">
+    <div class="powered">
+      <span id="poweredLabel">Powered by</span>
+      <span class="powered-chip">🔷 Gemini AI</span>
+      <span class="powered-chip">📖 Wikipedia</span>
+    </div>
+    <div class="result-hero">
+      <div class="result-img-wrap">
+        <img class="result-img" id="resultImg" src="" alt="">
+        <div class="result-img-overlay"></div>
+        <a class="wiki-badge" id="wikiLink" href="#" target="_blank" rel="noopener">📖 Wikipedia</a>
+        <div class="cat-badge" id="catBadge">✦</div>
+        <div class="result-img-name">
+          <div class="species-common" id="speciesCommon">—</div>
+          <div class="species-sci" id="speciesSci">—</div>
+        </div>
+      </div>
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
+    <div class="info-card">
+      <div class="card-title" id="descTitle">🌱 Description</div>
+      <div class="card-text" id="descText">—</div>
+    </div>
+    <div class="info-card">
+      <div class="card-title" id="distTitle">🌍 World Distribution</div>
+      <div class="card-text" id="zonesText">—</div>
+      <div class="zone-chips" id="zoneChips"></div>
+    </div>
+  </div>
+
+  <!-- YOLO -->
+  <div class="detect-panel" id="yoloPanel">
+    <div class="detect-header">
+      <div class="dot-live"></div>
+      <span id="detectHeader">Image detection with YOLO</span>
+    </div>
+    <div class="detect-body">
+      <div class="method-tab-sm active" id="tabUpload" onclick="setMethod('upload')">
+        <div class="ti">📁</div>
+        <div><div class="tt" id="uploadTitle">Upload Image</div><div class="ts" id="uploadSub">JPG, PNG, WEBP</div></div>
+      </div>
+      <div class="method-tab-sm" id="tabCamera" onclick="setMethod('camera')">
+        <div class="ti">📷</div>
+        <div><div class="tt" id="camTitle">Use Camera</div><div class="ts" id="camSub">Real time</div></div>
+      </div>
+    </div>
+    <div class="detect-content">
+      <div class="upload-area-sm active" id="uploadArea">
+        <div class="ut" id="uploadAreaText">📸 Click or drag an image here</div>
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
+      <div id="imagePreview"><img id="previewImg" src="" alt=""></div>
+      <div class="camera-area" id="cameraArea">
+        <video id="cameraFeed" autoplay playsinline></video>
+        <div class="cam-overlay" id="camOverlay">Starting camera...</div>
+      </div>
+      <button class="yolo-btn" id="yoloBtn" onclick="detectYolo()">🔬 <span id="yoloBtnText">Detect with YOLO</span></button>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div id="categoriesSection">
+    <div class="section-title" id="catSectionTitle">Explore Categories</div>
+    <div class="cat-grid">
+
+      <div class="cat-card" onclick="quickSearch('Orchid')">
+        <img class="cat-photo" data-wiki="Orchid" src="" alt="Orchid">
+        <div class="card-overlay"></div><div class="cat-name">Orchids</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Rose')">
+        <img class="cat-photo" data-wiki="Rosa_(plant)" src="" alt="Rose">
+        <div class="card-overlay"></div><div class="cat-name">Roses</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Cactus')">
+        <img class="cat-photo" data-wiki="Cactus" src="" alt="Cactus">
+        <div class="card-overlay"></div><div class="cat-name">Cactus</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Oak tree')">
+        <img class="cat-photo" data-wiki="Oak" src="" alt="Trees">
+        <div class="card-overlay"></div><div class="cat-name">Trees</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Fern')">
+        <img class="cat-photo" data-wiki="Fern" src="" alt="Fern">
+        <div class="card-overlay"></div><div class="cat-name">Ferns</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Venus flytrap')">
+        <img class="cat-photo" data-wiki="Venus_flytrap" src="" alt="Venus flytrap">
+        <div class="card-overlay"></div><div class="cat-name">Carnivorous</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Sunflower')">
+        <img class="cat-photo" data-wiki="Helianthus_annuus" src="" alt="Sunflower">
+        <div class="card-overlay"></div><div class="cat-name">Sunflower</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Lavender')">
+        <img class="cat-photo" data-wiki="Lavandula" src="" alt="Lavender">
+        <div class="card-overlay"></div><div class="cat-name">Lavender</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Bamboo')">
+        <img class="cat-photo" data-wiki="Bamboo" src="" alt="Bamboo">
+        <div class="card-overlay"></div><div class="cat-name">Bamboo</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Tulip')">
+        <img class="cat-photo" data-wiki="Tulip" src="" alt="Tulip">
+        <div class="card-overlay"></div><div class="cat-name">Tulips</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Bonsai tree')">
+        <img class="cat-photo" data-wiki="Bonsai" src="" alt="Bonsai">
+        <div class="card-overlay"></div><div class="cat-name">Bonsai</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Lotus flower')">
+        <img class="cat-photo" data-wiki="Nelumbo_nucifera" src="" alt="Lotus">
+        <div class="card-overlay"></div><div class="cat-name">Lotus</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Aloe vera')">
+        <img class="cat-photo" data-wiki="Aloe_vera" src="" alt="Aloe Vera">
+        <div class="card-overlay"></div><div class="cat-name">Aloe Vera</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Cherry blossom')">
+        <img class="cat-photo" data-wiki="Cherry_blossom" src="" alt="Cherry Blossom">
+        <div class="card-overlay"></div><div class="cat-name">Cherry Blossom</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Wild mushroom')">
+        <img class="cat-photo" data-wiki="Amanita_muscaria" src="" alt="Mushroom">
+        <div class="card-overlay"></div><div class="cat-name">Mushrooms</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Bird of paradise flower')">
+        <img class="cat-photo" data-wiki="Strelitzia_reginae" src="" alt="Bird of Paradise">
+        <div class="card-overlay"></div><div class="cat-name">Bird of Paradise</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Water lily')">
+        <img class="cat-photo" data-wiki="Nymphaea" src="" alt="Water Lily">
+        <div class="card-overlay"></div><div class="cat-name">Water Lily</div>
+      </div>
+
+      <div class="cat-card" onclick="quickSearch('Magnolia')">
+        <img class="cat-photo" data-wiki="Magnolia" src="" alt="Magnolia">
+        <div class="card-overlay"></div><div class="cat-name">Magnolia</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer id="siteFooter">
+    <div class="footer-links">
+      <a href="#" onclick="return false">Species Detector</a>
+      <a href="#" onclick="scrollToSearch();return false" id="flSearch">Search</a>
+      <a href="#" onclick="scrollToCategories();return false" id="flCat">Categories</a>
+      <a href="#" onclick="scrollToYolo();return false" id="flYolo">YOLO Detection</a>
+      <a href="#" onclick="goHome();return false" id="flHome">Home</a>
+      <a href="https://aistudio.google.com" target="_blank" rel="noopener">Gemini AI</a>
+      <a href="https://wikipedia.org" target="_blank" rel="noopener">Wikipedia</a>
+    </div>
+    <div class="footer-copy">
+      <span id="footerLangLabel">🌐 English</span>
+      <span class="footer-dot">·</span>
+      <span id="footerCopy">© 2026 Species Detector · Yura · All Rights Reserved</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+// PARTICLES
+const pw=document.getElementById('particles');
+for(let i=0;i<22;i++){
+  const p=document.createElement('div');p.className='particle';
+  const s=1+Math.random()*3;
+  p.style.cssText=`left:${Math.random()*100}%;--dx:${(Math.random()-.5)*130}px;width:${s}px;height:${s}px;animation-duration:${8+Math.random()*11}s;animation-delay:${Math.random()*10}s;`;
+  pw.appendChild(p);
+}
+
+// CSRF
+function getCookie(n){let v=null;document.cookie.split(';').forEach(c=>{c=c.trim();if(c.startsWith(n+'='))v=decodeURIComponent(c.slice(n.length+1));});return v;}
+const csrf=getCookie('csrftoken');
+
+// REGION EMOJIS
+const REGION_EMOJIS={
+  'South America':'🌎','América del Sur':'🌎','North America':'🇺🇸','América del Norte':'🇺🇸',
+  'Europe':'🌍','Europa':'🌍','Asia':'🌏','Africa':'🌍','África':'🌍',
+  'Oceania':'🦘','Oceanía':'🦘','Central America':'🌴','América Central':'🌴',
+  'Tropics':'🌴','Trópicos':'🌴','Mediterranean':'🫒','Mediterráneo':'🫒',
+  'Caribbean':'🏝️','Caribe':'🏝️','Middle East':'🌙','Southeast Asia':'🌺',
+  'East Asia':'🏯','Worldwide':'🌐','Mundial':'🌐',
+};
+
+// TRANSLATIONS
+const T={
+  en:{
+    tagline:"Biodiversity Explorer · Gemini AI + Wikipedia",
+    placeholder:"Search any species... e.g: orchid, lily, oak tree",
+    tags:[{l:"🌸 Orchid",q:"Orchid"},{l:"🌵 Cactus",q:"Cactus"},{l:"🌿 Fern",q:"Fern"},{l:"🪴 Carnivorous",q:"Venus flytrap"},{l:"🎋 Bamboo",q:"Bamboo"},{l:"🌻 Sunflower",q:"Sunflower"},{l:"💜 Lavender",q:"Lavender"},{l:"🎍 Bonsai",q:"Bonsai"}],
+    loading:"Searching Wikipedia + Gemini AI...",
+    descTitle:"🌱 Description",distTitle:"🌍 World Distribution",
+    detectHeader:"Image detection with YOLO",
+    camTitle:"Use Camera",camSub:"Real time",uploadTitle:"Upload Image",uploadSub:"JPG, PNG, WEBP",
+    uploadAreaText:"📸 Click or drag an image here",yoloBtn:"Detect with YOLO",
+    catTitle:"Explore Categories",poweredLabel:"Powered by",
+    infoLabels:["Origin","Temperature","Humidity","Climate","Life cycle"],
+    noResult:(q)=>`"${q}" not found. Try another name.`,connError:"Cannot reach server.",
+    navHome:"Home",navSearch:"Search Species",navCat:"Categories",navYolo:"Detect with YOLO",drawerLang:"Language",
+  },
+  es:{
+    tagline:"Explorador de Biodiversidad · Gemini AI + Wikipedia",
+    placeholder:"Busca cualquier especie... ej: orquídea, lirio, roble",
+    tags:[{l:"🌸 Orquídea",q:"Orquídea"},{l:"🌵 Cactus",q:"Cactus"},{l:"🌿 Helecho",q:"Helecho"},{l:"🪴 Carnívora",q:"Venus atrapamoscas"},{l:"🎋 Bambú",q:"Bambú"},{l:"🌻 Girasol",q:"Girasol"},{l:"💜 Lavanda",q:"Lavanda"},{l:"🎍 Bonsái",q:"Bonsái"}],
+    loading:"Buscando en Wikipedia + Gemini AI...",
+    descTitle:"🌱 Descripción",distTitle:"🌍 Distribución Mundial",
+    detectHeader:"Detección por imagen con YOLO",
+    camTitle:"Usar Cámara",camSub:"Tiempo real",uploadTitle:"Subir Imagen",uploadSub:"JPG, PNG, WEBP",
+    uploadAreaText:"📸 Click o arrastra una imagen aquí",yoloBtn:"Detectar con YOLO",
+    catTitle:"Explorar Categorías",poweredLabel:"Tecnología",
+    infoLabels:["Origen","Temperatura","Humedad","Clima","Ciclo de vida"],
+    noResult:(q)=>`"${q}" no encontrado. Intenta con otro nombre.`,connError:"Error de conexión.",
+    navHome:"Inicio",navSearch:"Buscar Especie",navCat:"Categorías",navYolo:"Detectar con YOLO",drawerLang:"Idioma",
+  }
+};
+
+let currentLang='en';
+
+// DRAWER
+function toggleDrawer(){
+  const d=document.getElementById('drawer');
+  const h=document.getElementById('hamburger');
+  const o=document.getElementById('drawerOverlay');
+  const open=d.classList.toggle('open');
+  h.classList.toggle('open',open);
+  o.classList.toggle('open',open);
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+
+// NAVIGATION
+function scrollToSearch(){ closeDrawer(); document.getElementById('searchSection').scrollIntoView({behavior:'smooth'}); document.getElementById('searchInput').focus(); }
+function scrollToCategories(){ closeDrawer(); document.getElementById('categoriesSection').scrollIntoView({behavior:'smooth'}); }
+function scrollToYolo(){ closeDrawer(); document.getElementById('yoloPanel').scrollIntoView({behavior:'smooth'}); }
+
+function goHome(){
+  closeDrawer();
+  hideResult(); hideError();
+  document.getElementById('searchInput').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function setLang(lang){
+  currentLang=lang;const t=T[lang];
+  document.getElementById('htmlRoot').lang=lang;
+  document.getElementById('tagline').textContent=t.tagline;
+  document.getElementById('searchInput').placeholder=t.placeholder;
+  document.getElementById('loadingText').textContent=t.loading;
+  document.getElementById('descTitle').textContent=t.descTitle;
+  document.getElementById('distTitle').textContent=t.distTitle;
+  document.getElementById('detectHeader').textContent=t.detectHeader;
+  document.getElementById('camTitle').textContent=t.camTitle;
+  document.getElementById('camSub').textContent=t.camSub;
+  document.getElementById('uploadTitle').textContent=t.uploadTitle;
+  document.getElementById('uploadSub').textContent=t.uploadSub;
+  document.getElementById('uploadAreaText').textContent=t.uploadAreaText;
+  document.getElementById('yoloBtnText').textContent=t.yoloBtn;
+  document.getElementById('catSectionTitle').textContent=t.catTitle;
+  document.getElementById('poweredLabel').textContent=t.poweredLabel;
+  document.getElementById('navHomeLabel').textContent=t.navHome;
+  document.getElementById('navSearchLabel').textContent=t.navSearch;
+  document.getElementById('navCatLabel').textContent=t.navCat;
+  document.getElementById('navYoloLabel').textContent=t.navYolo;
+  document.getElementById('drawerLangLabel').textContent=t.drawerLang;
+  document.getElementById('quickTags').innerHTML=t.tags.map(tg=>`<span class="tag" onclick="quickSearch('${tg.q}')">${tg.l}</span>`).join('');
+  ['btnEN','btnES','dlangEN','dlangES'].forEach(id=>{
+    document.getElementById(id).classList.toggle('active', id.endsWith(lang.toUpperCase()));
+  });
+  // Footer
+  document.getElementById('footerLangLabel').textContent=lang==='es'?'🌐 Español':'🌐 English';
+  document.getElementById('footerCopy').textContent=lang==='es'
+    ?'© 2026 Species Detector · Yura · Todos los Derechos Reservados'
+    :'© 2026 Species Detector · Yura · All Rights Reserved';
+  document.getElementById('flSearch').textContent=lang==='es'?'Buscar':'Search';
+  document.getElementById('flCat').textContent=lang==='es'?'Categorías':'Categories';
+  document.getElementById('flYolo').textContent=lang==='es'?'Detección YOLO':'YOLO Detection';
+  document.getElementById('flHome').textContent=lang==='es'?'Inicio':'Home';
+  closeDrawer();
+}
+
+// SEARCH
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')searchSpecies();});
+function quickSearch(term){ closeDrawer(); document.getElementById('searchInput').value=term; searchSpecies(); }
+
+async function searchSpecies(){
+  const query=document.getElementById('searchInput').value.trim();
+  if(!query) return;
+  showLoading(true); hideResult(); hideError();
+  try{
+    const res=await fetch('/api/search/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({query,lang:currentLang})});
+    const info=await res.json();
+    if(!info.found){ showError(info.message||T[currentLang].noResult(query)); }
+    else { renderResult(info); }
+  }catch(err){ showError(T[currentLang].connError+' — '+err.message); }
+  finally{ showLoading(false); }
+}
+
+function renderResult(info){
+  const t=T[currentLang];
+  const imgEl=document.getElementById('resultImg');
+  if(info.wiki_image){ imgEl.src=info.wiki_image; imgEl.onerror=()=>loadUnsplash(imgEl,info); }
+  else { loadUnsplash(imgEl,info); }
+  const wl=document.getElementById('wikiLink');
+  if(info.wiki_url){ wl.href=info.wiki_url; wl.style.display='flex'; } else { wl.style.display='none'; }
+  document.getElementById('speciesCommon').textContent=`${info.emoji||'🌿'} ${info.common_name}`;
+  document.getElementById('speciesSci').textContent=info.scientific_name;
+  document.getElementById('catBadge').textContent=`✦ ${info.category}`;
+  const icons=['🌍','🌡️','💧','☀️','⏳'];
+  const vals=[info.origin,info.temperature,info.humidity,info.climate,info.lifespan];
+  document.getElementById('infoGrid').innerHTML=t.infoLabels.map((lbl,i)=>`<div class="info-cell"><div class="ic-icon">${icons[i]}</div><div class="ic-label">${lbl}</div><div class="ic-value">${vals[i]||'—'}</div></div>`).join('');
+  document.getElementById('descText').textContent=info.description;
+  document.getElementById('zonesText').textContent=info.distribution;
+  document.getElementById('zoneChips').innerHTML=(info.regions||[]).map(r=>`<div class="zone-chip">${REGION_EMOJIS[r]||'📍'} ${r}</div>`).join('');
+  showResult();
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function loadUnsplash(imgEl,info){
+  const q=encodeURIComponent((info.unsplash_query||info.common_name)+' plant');
+  const tmp=new Image();
+  tmp.onload=()=>{ imgEl.src=tmp.src; };
+  tmp.onerror=()=>{ imgEl.style.display='none'; };
+  tmp.src=`https://source.unsplash.com/featured/900x400/?${q}`;
+}
+
+// YOLO
+let cameraStream=null,currentMethod='upload';
+function setMethod(m){
+  currentMethod=m;
+  document.getElementById('tabCamera').classList.toggle('active',m==='camera');
+  document.getElementById('tabUpload').classList.toggle('active',m==='upload');
+  document.getElementById('uploadArea').classList.toggle('active',m==='upload');
+  document.getElementById('imagePreview').style.display='none';
+  document.getElementById('cameraArea').classList.toggle('active',m==='camera');
+  if(m==='camera') startCamera(); else stopCamera();
+}
+async function startCamera(){
+  try{ cameraStream=await navigator.mediaDevices.getUserMedia({video:true}); document.getElementById('cameraFeed').srcObject=cameraStream; document.getElementById('camOverlay').style.display='none'; }
+  catch{ document.getElementById('camOverlay').textContent='❌ No camera access'; }
+}
+function stopCamera(){ if(cameraStream){ cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; } }
+const uploadArea=document.getElementById('uploadArea'),imageInput=document.getElementById('imageInput');
+uploadArea.addEventListener('click',()=>imageInput.click());
+uploadArea.addEventListener('dragover',e=>{e.preventDefault();uploadArea.classList.add('drag');});
+uploadArea.addEventListener('dragleave',()=>uploadArea.classList.remove('drag'));
+uploadArea.addEventListener('drop',e=>{e.preventDefault();uploadArea.classList.remove('drag');if(e.dataTransfer.files[0])showPreview(e.dataTransfer.files[0]);});
+imageInput.addEventListener('change',()=>{if(imageInput.files[0])showPreview(imageInput.files[0]);});
+function showPreview(file){ const r=new FileReader(); r.onload=e=>{document.getElementById('previewImg').src=e.target.result;document.getElementById('imagePreview').style.display='block';uploadArea.classList.remove('active');}; r.readAsDataURL(file); }
+let detectionInProgress=false;async function detectYolo(){if(detectionInProgress)return;detectionInProgress=true;const btn=document.getElementById('yoloBtn');const btnText=document.getElementById('yoloBtnText');if(currentMethod==='upload'&&!imageInput.files[0]){showError('Please select an image first.');detectionInProgress=false;return;}btn.disabled=true;btnText.textContent='⏳ Analyzing...';hideError();showLoading(true);try{let response;if(currentMethod==='upload'){const fd=new FormData();fd.append('image',imageInput.files[0]);response=await fetch('/detect/upload/',{method:'POST',body:fd});}else if(currentMethod==='camera'){response=await fetch('/detect/camera/',{method:'POST'});}else{showError('Please select an image first.');return;}if(!response.ok){throw new Error(`Server error: ${response.status}`);}const data=await response.json();console.log('🔍 Detection:',data);if(Array.isArray(data.detections)&&data.detections.length>0){const det=data.detections[0];let name=null;if(typeof det==='string'){name=det;}else if(det.class){name=det.class;}else if(det.name){name=det.name;}else if(det.species){name=det.species;}if(name){console.log('✅ Detected:',name);document.getElementById('searchInput').value=name;searchSpecies();}else{showError('No species detected. Try another image.');}}else{showError('No species detected. Try with better lighting.');}}catch(e){console.error('❌ Error:',e);showError(`Detection failed: ${e.message}`);}finally{detectionInProgress=false;showLoading(false);btn.disabled=false;btnText.textContent=T[currentLang].yoloBtn;}}
+
+function showLoading(v){ document.getElementById('loading').style.display=v?'block':'none'; }
+function showResult(){ document.getElementById('resultCard').style.display='block'; }
+function hideResult(){ document.getElementById('resultCard').style.display='none'; }
+function showError(msg){ const el=document.getElementById('errorMsg'); el.innerHTML='❌ '+msg; el.style.display='block'; }
+function hideError(){ document.getElementById('errorMsg').style.display='none'; }
+
+// LOAD WIKIPEDIA IMAGES — Wikipedia REST API allows CORS from browser
+async function loadWikiImage(img) {
+  const article = img.dataset.wiki;
+  if (!article) return;
+  try {
+    const r = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(article)}`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!r.ok) return;
+    const data = await r.json();
+    const url = (data.originalimage || data.thumbnail || {}).source;
+    if (url) {
+      img.src = url;
+      img.style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+// Load all category images on page load
+window.addEventListener('load', () => {
+  document.querySelectorAll('img.cat-photo[data-wiki]').forEach(img => {
+    loadWikiImage(img);
+  });
+});
+
+// 3D TILT EFFECT ON CATEGORY CARDS
+document.querySelectorAll('.cat-card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width -0.5;
+    const y=(e.clientY-r.top)/r.height -0.5;
+    card.style.transform=`translateY(-14px) rotateX(${-y*16}deg) rotateY(${x*16}deg) scale(1.04)`;
+  });
+  card.addEventListener('mouseleave',()=>{ card.style.transform=''; });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Variables de entorno (NUNCA subir)
+.env
+
+# Base de datos local
+db.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# PyCharm
+.idea/
+*.iml
+
+# Archivos estáticos compilados
+staticfiles/
+
+# Logs
+*.log
+detections_log.json
+
+# YOLO model (pesado, se descarga en producción)
+yolov8n.pt
+
+# OS
+.DS_Store
+Thumbs.db
+
