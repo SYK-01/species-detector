@@ -13,14 +13,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Railway pone el dominio automáticamente en RAILWAY_PUBLIC_DOMAIN
 RAILWAY_HOST = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.up.railway.app']
 if RAILWAY_HOST:
     ALLOWED_HOSTS.append(RAILWAY_HOST)
-
-# Acepta cualquier host extra que pongas en .env
-EXTRA_HOSTS = os.environ.get('ALLOWED_HOSTS', '')
-if EXTRA_HOSTS:
-    ALLOWED_HOSTS += [h.strip() for h in EXTRA_HOSTS.split(',') if h.strip()]
 
 # ── APPS ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -35,7 +30,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',   # ← sirve archivos estáticos en producción
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,7 +69,7 @@ DATABASES = {
 
 # ── ARCHIVOS ESTÁTICOS (CSS, JS) ──────────────────────────────────────────────
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'   # Railway sirve desde aquí
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ── INTERNACIONALIZACIÓN ──────────────────────────────────────────────────────
@@ -90,16 +85,14 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    # HTTPS (actívalo cuando tengas SSL en Railway)
-    # SECURE_SSL_REDIRECT = True
-    # SESSION_COOKIE_SECURE = True
-    # CSRF_COOKIE_SECURE = True
 
-# ── CSRF: permite peticiones desde Railway y celulares ────────────────────────
+# ── CSRF: permite peticiones desde Railway ────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'https://*.up.railway.app',
 ]
 if RAILWAY_HOST:
     CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_HOST}')
+
 
