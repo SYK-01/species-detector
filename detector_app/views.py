@@ -6,16 +6,12 @@ import json
 import requests
 import cv2
 import numpy as np
-from ultralytics import YOLO
 from .models import DetectionResult, SearchHistory
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
 
-try:
-    model = YOLO("yolov8n.pt")
-except Exception:
-    model = None
+model = None
 
 
 def index(request):
@@ -24,13 +20,8 @@ def index(request):
 
 # ── PROXY DE IMÁGENES ─────────────────────────────────────────────────────────
 def proxy_image(request, article):
-    """
-    Proxy: el server Django busca la imagen en Wikipedia y la devuelve al browser.
-    Así no hay bloqueos de hotlink ni CORS — el browser solo habla con Django.
-    """
     try:
         headers = {'User-Agent': 'SpeciesDetector/1.0 (educational project)'}
-        # 1. Obtener URL de imagen desde Wikipedia
         api_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(article)}"
         r = requests.get(api_url, headers=headers, timeout=8)
         if r.status_code == 200:
@@ -42,17 +33,15 @@ def proxy_image(request, article):
                 img_url = data['thumbnail'].get('source', '')
 
             if img_url:
-                # 2. Descargar la imagen y servir al browser
                 img_r = requests.get(img_url, headers=headers, timeout=12)
                 if img_r.status_code == 200:
                     content_type = img_r.headers.get('Content-Type', 'image/jpeg')
                     response = HttpResponse(img_r.content, content_type=content_type)
-                    response['Cache-Control'] = 'public, max-age=86400'  # cache 1 día
+                    response['Cache-Control'] = 'public, max-age=86400'
                     return response
-    except Exception as e:
+    except Exception:
         pass
 
-    # Fallback: placeholder verde con el nombre
     return HttpResponseRedirect(
         f'https://placehold.co/400x300/061209/4ade80?text={article.replace("_", "+")}'
     )
@@ -190,34 +179,18 @@ def get_search_history(request):
     ]})
 
 
-# ── YOLO ──────────────────────────────────────────────────────────────────────
+# ── DETECCIÓN DE CÁMARA (deshabilitada sin YOLO) ──────────────────────────────
 @csrf_exempt
 def detect_from_camera(request):
-    if request.method == 'POST':
-        if not model:
-            return JsonResponse({'error': 'YOLO model not loaded'}, status=500)
-        cam = cv2.VideoCapture(0)
-        ret, frame = cam.read()
-        cam.release()
-        if not ret:
-            return JsonResponse({'error': 'No camera access'}, status=400)
-        return JsonResponse({'detections': _process_yolo(model(frame), 'camera')})
-    return JsonResponse({'error': 'Method not allowed'}, status=405)
+    return JsonResponse({'error': 'Camera detection not available in this deployment'}, status=503)
 
 
+# ── DETECCIÓN POR IMAGEN ──────────────────────────────────────────────────────
 @csrf_exempt
 def detect_from_upload(request):
     if request.method == 'POST' and request.FILES.get('image'):
         image_bytes = request.FILES['image'].read()
-
-        # Try Gemini Vision FIRST (mejor para plantas)
         detections = _gemini_vision_identify(image_bytes)
-
-        # Si Gemini falla o no detecta nada, intentar YOLO
-        if not detections and model:
-            frame = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-            detections = _process_yolo(model(frame), 'upload')
-
         if detections:
             return JsonResponse({'detections': detections})
         return JsonResponse({'detections': [], 'message': 'No species identified'})
@@ -258,7 +231,6 @@ If no plant or natural species is visible, respond: {"found": false}"""
         text = r.json()['candidates'][0]['content']['parts'][0]['text'].strip()
         print(f"📝 Gemini response: {text}")
 
-        # Clean JSON
         if '```' in text:
             for part in text.split('```'):
                 part = part.strip().lstrip('json').strip()
@@ -288,18 +260,6 @@ If no plant or natural species is visible, respond: {"found": false}"""
     return []
 
 
-def _process_yolo(results, source):
-    detections = []
-    for r in results:
-        for box in r.boxes:
-            name = model.names[int(box.cls[0])]
-            conf = float(box.conf[0])
-            DetectionResult.objects.create(species_name=name, confidence=conf, source=source)
-            detections.append({'class': name, 'confidence': conf,
-                               'confidence_pct': f"{conf * 100:.1f}%"})
-    return sorted(detections, key=lambda x: x['confidence'], reverse=True)
-
-
 def get_recent_detections(request):
     detections = DetectionResult.objects.order_by('-detected_at')[:10]
     return JsonResponse({'detections': [
@@ -307,6 +267,7 @@ def get_recent_detections(request):
          'date': d.detected_at.strftime('%d/%m %H:%M')}
         for d in detections
     ]})
+
 
 
 
